@@ -11,7 +11,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("Essai s");
+  Serial.println("Eai s");
   // put your main code here, to run repeatedly:
   delay(1000);
 }
