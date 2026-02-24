@@ -8,24 +8,6 @@
 - Ajouter ici les connexions spécifiques
 - Ajouter les schémas ou photos si nécessaire
 ## Connexions
-- Lecture des Voltages Batterie 0 à 7
-- (Batt 1 +) _____ R1-0-20k ____ R2-0-10k _____ GND 
--                            |____ Nano Pin AO   
-- (Batt 2 +) _____ R1-1-20k ____ R2-1-10k _____ GND 
--                            |____ Nano Pin A1   
-- (Batt 3 +) _____ R1-2-20k ____ R2-2-10k _____ GND 
--                            |____ Nano Pin A2   
-- (Batt 4 +) _____ R1-3-20k ____ R2-3-10k _____ GND 
--                            |____ Nano Pin A3   
-- (Batt 5 +) _____ R1-4-20k ____ R2-4-10k _____ GND 
--                            |____ Nano Pin A4   
-- (Batt 6 +) _____ R1-5-20k ____ R2-5-10k _____ GND 
--                            |____ Nano Pin A5   
-- (Batt 7 +) _____ R1-6-20k ____ R2-6-10k _____ GND 
--                            |____ Nano Pin A6   
-- (Batt 8 +) _____ R1-7-20k ____ R2-7-10k _____ GND 
--                            |____ Nano Pin A7 
-
 ## Connexion DipSwitch en INPUT_PULLUP
 - Nano Pin D10 _____ DIP1 _____GND
 - Nano Pin D11 _____ DIP2 _____GND
