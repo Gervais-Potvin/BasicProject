@@ -1,7 +1,7 @@
 # Connexions et Câblage — Arduino Nano
 
 ## Microcontrôleur
-- Carte : Arduino Nano (ATmega328P)
+- Carte : Arduino UNO (ATmega328P)
 - Alimentation : 5V USB ou Vin 7–12V
 
 ## Notes
