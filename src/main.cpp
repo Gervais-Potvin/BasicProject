@@ -9,6 +9,21 @@
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>
 #include <EEPROM.h>
+#include "config.h"  // Projet
+#include "state_machine.h"  //Projet
+
+State state = ATTENTE_CARTE;
+bool entry_AttenteCarte = false;
+bool entry_ValidationCarte = false;
+bool entry_CarteValide = false;
+bool entry_CarteInvalide = false;
+bool entry_AttenteConnexion = false;
+bool entry_ChargeEnCours = false;
+bool entry_FinCharge = false;
+bool entry_ModeAdmin = false;
+String gUID = "";
+String lastRFID = "";
+
 // =========================
 // PINS
 // =========================
@@ -107,19 +122,68 @@ enum State {
   FIN_CHARGE,
   MODE_ADMIN
 };
-State state = ATTENTE_CARTE;
 unsigned long lastActivity = 0;
 String cmd = "";
 String gQuitMode = "";
-bool entry_AttenteCarte = true;
-bool entry_ValidationCarte = true;
-bool entry_CarteValide = true;
-bool entry_CarteInvalide = true;
-bool entry_AttenteConnexion = true;
-bool entry_ChargeEnCours = true;
-bool entry_FinCharge = true;
-bool entry_ModeAdmin = true;
 
+// =========================
+// PROTOTYPES DES FONCTIONS
+// =========================
+void print2(int v);
+void lcdUpdateClock();
+bool readRTC(DateTime &dt);
+bool writeRTC(int h, int m, int s, int d, int mo, int y);
+bool rtcBatteryOK();
+String getTimestamp();
+void readRTC();
+void setRTC();
+void updateRuntime();
+void resetActivityTimer();
+bool isInactive(unsigned long timeoutMs);
+void saveUIDToEEPROM(String uid);
+void clearUIDFromEEPROM();
+String readUIDFromEEPROM();
+bool isValidUID(String uid);
+void spiDeselectAll();
+void selectRFID();
+void selectSD();
+void beep(int durationMs);
+void ssrOn();
+void ssrOff();
+bool checkSD();
+void LogEvent(String type, String message);
+void Log2SD(String timestamp, String uid, String info1, String info2, String info3);
+bool checkStopByCurrent();
+bool checkStartByCurrent();
+bool isCharging();
+float readSCT();
+String readLine();
+String readSerialString();
+void handleSerialCommands();
+String readRFID();
+void addCard();
+void delCard();
+bool findCard(String uidParam);
+void lcdAccueil();
+void lcdValidationCarte();
+void lcdCarteValide();
+void lcdCarteInvalide();
+void lcdAttenteConnexion();
+void lcdChargeEnCours();
+void lcdFinCharge();
+void lcdAdmin();
+void lcdClearLine(uint8_t line);
+void updateLCDRestMode();
+void runStateActions();
+void handleTransitions();
+void fctEtape1();
+void fctEtape2();
+void fctEtape3();
+void fctEtape4();
+void fctEtape5();
+void fctEtape6();
+void fctEtape7();
+void fctEtape8();
 // =========================
 // FONCTIONS UTILITAIRE GENERAL
 // =========================
@@ -239,7 +303,7 @@ void saveUIDToEEPROM(String uid) {
     EEPROM.write(EEPROM_UID_ADDR, uid.length());
 
     // 2. Écrire les caractères
-    for (int i = 0; i < uid.length() && i < EEPROM_UID_MAX_LEN - 2; i++) {
+    for (size_t i = 0; i < uid.length() && i < EEPROM_UID_MAX_LEN - 2; i++) {
         EEPROM.write(EEPROM_UID_ADDR + 1 + i, uid[i]);
     }
 
@@ -284,7 +348,7 @@ bool isValidUID(String uid) { // Validation du format du UID
   // Doit contenir au moins un ':'
   if (uid.indexOf(':') == -1) return false;
   // Vérifier que tous les caractères sont HEX ou ':'
-  for (int i = 0; i < uid.length(); i++) {
+  for (size_t i = 0; i < uid.length(); i++) {
     char c = uid[i];
     bool isHex = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
     if (!isHex && c != ':') return false;
@@ -876,6 +940,7 @@ void updateLCDRestMode() {
 // SETUP
 // =========================
 void setup() {
+  #include "state_machine.h"
   Serial.begin(115200);
 
   // --- Initialisation des timers LCD ---
@@ -978,290 +1043,4 @@ void loop() {
   runStateActions();
   // 2. Gérer les transitions entre étapes
   handleTransitions();
-}
-// =========================
-// FONCTIONS ETAPES MACHINE D'ÉTATS
-// =========================
-void runStateActions() {
-  switch(state) {
-    case ATTENTE_CARTE:
-      fctEtape1();
-      break;
-    case VALIDATION_CARTE:
-      fctEtape2();
-      break;
-    case CARTE_VALIDE:
-      fctEtape3();
-      break;
-    case CARTE_INVALIDE:
-      fctEtape4();
-      break;
-    case ATTENTE_CONNEXION:
-      fctEtape5();
-      break;
-    case CHARGE_EN_COURS:
-      fctEtape6();
-      break;
-    case FIN_CHARGE:
-      fctEtape7();
-      break;
-    case MODE_ADMIN:
-      fctEtape8();
-      break;
-  }
-}
-void handleTransitions() {
-  switch (state) {
-    case ATTENTE_CARTE:
-      if (gUID != "") {
-        state = VALIDATION_CARTE;
-        entry_ValidationCarte = true;
-      }
-      break;
-    case VALIDATION_CARTE:
-      if (findCard(gUID)) {
-        state = CARTE_VALIDE;
-        entry_CarteValide = true;
-      } else {
-        state = CARTE_INVALIDE;
-        entry_CarteInvalide = true;
-      }
-      break;
-    case CARTE_VALIDE:
-      resetActivityTimer();
-      state = ATTENTE_CONNEXION;
-      entry_AttenteConnexion = true;
-      break;
-    case CARTE_INVALIDE:
-      resetActivityTimer();
-      state = ATTENTE_CARTE;
-      entry_AttenteCarte = true;
-      break;
-    case ATTENTE_CONNEXION:
-      // 1. Activer SSR pour tester la présence du véhicule
-      ssrOn();  //  Activation des SSR pour permettre la lecture de courant
-      delay(5000); // Stabiliser le courant
-      if (checkStartByCurrent()) {
-        state = CHARGE_EN_COURS;
-        entry_ChargeEnCours = true;
-      }
-      else if (isInactive(5UL * 60UL * 1000UL)) { //5 Minutes
-        state = ATTENTE_CARTE;
-        entry_AttenteCarte = true;
-      }
-      break;
-    case CHARGE_EN_COURS:
-      // Lecture RFID
-      String uid = readRFID();
-      if (uid != "") {
-        lastRFID = uid;
-      }
-      if (lastRFID == gUID && lastRFID != "") {
-        gQuitMode = "Arret par Carte";
-        state = FIN_CHARGE;
-        entry_FinCharge = true;
-      }
-      else if (checkStopByCurrent()) {
-        gQuitMode = "Arret par Deconnexion";
-        state = FIN_CHARGE;
-        entry_FinCharge = true;
-      }
-      break;
-    case FIN_CHARGE:
-      if (isInactive(5UL * 1000UL)) {
-        state = ATTENTE_CARTE;
-        entry_AttenteCarte = true;
-        entry_FinCharge = true;
-      }
-      break;
-    case MODE_ADMIN:
-      if (isInactive(15UL * 60UL * 1000UL)) {
-        state = ATTENTE_CARTE;
-        entry_AttenteCarte = true;
-      }
-      break;
-  }
-}
-void fctEtape1() { // Étape initiale Attente de RFID
-  // --- REST MODE : LCD en repos ---
-  if (lcdRestMode) {
-    String uid = readRFID();
-    // Si une carte est passée → réveil
-    if (uid != "") {
-      lcdRestMode = false;
-      lastRFID = "";
-      resetActivityTimer();
-      lastLCDRestActivity = millis();
-      return;
-    }
-    return;   // <<< OBLIGATOIRE : empêche tout affichage LCD
-  }
-  if (entry_AttenteCarte) { // OneShot
-    DBGLN("Attente de Carte");
-    lcdAccueil();
-    entry_AttenteCarte = false;
-    gUID = "";
-    lastRFID = "";
-    resetActivityTimer();
-  }
-  String uid = readRFID();
-  if (uid != "") {
-    gUID = uid;
-    resetActivityTimer();
-  }
-  handleSerialCommands();  // Commandes admin
-  lcdUpdateClock(); // Rafraichissement de la Ligne d'horloge du LCD
-}
-void fctEtape2() { // Validation de la carte RFID
-  if (entry_ValidationCarte) { // OneShot
-    DBGLN("Validation de Carte");
-    lcdValidationCarte();
-    entry_ValidationCarte = false;
-  }
-}
-void fctEtape3() { // Carte Valide
-  if (entry_CarteValide) { // OneShot
-    DBGLN("Carte Valide");
-    lcdCarteValide();
-    lastRFID = "";
-    resetActivityTimer();
-    entry_CarteValide = false;
-  }
-  delay(3000); // Petit feedback visuel
-}
-void fctEtape4() { // Carte Invalide
-  if (entry_CarteInvalide) { // OneShot
-    DBGLN("Carte Invalide");
-    lcdCarteInvalide();
-    resetActivityTimer();
-    LogEvent("RFID_FAIL", "Carte inconnue");
-    entry_CarteInvalide = false;
-  }
-  delay(5000); // Petit feedback visuel
-}
-void fctEtape5() { // Attente de Branchement du Véhicule
-  if (entry_AttenteConnexion) { // OneShot
-    DBGLN("Attente Connexion");
-    lcdAttenteConnexion();
-    entry_AttenteConnexion = false;
-  }
-  // Lecture RFID (pour arrêt manuel parfait)
-  lcdUpdateClock(); // Rafraichissement de la Ligne d'horloge du LCD
-  readRFID();
-}
-void fctEtape6() { // Charge en Cours
-  // --- OneShot ---
-  if (entry_ChargeEnCours) {
-    DBGLN("Charge En Cours");
-    ssrOn();
-    lcdChargeEnCours();
-    digitalWrite(PIN_LED, HIGH);   // <<< LED ON pendant la charge
-    entry_ChargeEnCours = false;
-    lastRFID = "";
-    ssrStartTime = millis();
-    gRunTime = 0;
-    gRunCost = 0.0;
-    strRuntime = "0";
-    strRunCost = "0.00";
-    saveUIDToEEPROM(gUID);   // UID propriétaire
-
-    String resumeUID = readUIDFromEEPROM();
-    DBG("Relecture UID: ");
-    DBGLN(resumeUID);
-  }
-  // --- REST MODE : LCD en repos ---
-  if (lcdRestMode) {
-    String uid = readRFID();
-    // Si une carte est passée → réveil de l'écran
-    if (uid != "") {
-      lcdRestMode = false;       // sortir du repos
-      lastRFID = "";             // IMPORTANT : ignorer cette carte
-      resetActivityTimer();      // activité détectée
-      lastLCDRestActivity = millis();  // reset du timer LCD
-      return;                    // ne rien faire d'autre ce cycle
-    }
-    // Continuer la charge normalement
-    updateRuntime();
-    return;
-  }
-  // --- LCD ACTIF : logique normale ---
-  lcdUpdateClock();   // rafraîchissement horloge
-  String uid = readRFID();   // lecture RFID
-  // --- Gestion RFID ---
-  if (uid != "") {
-    resetActivityTimer();   // activité détectée
-    // 1. Carte propriétaire → arrêt de charge
-    if (uid == gUID) {
-      gQuitMode = "Arret par Carte";
-      state = FIN_CHARGE;
-      entry_FinCharge = true;
-      return;
-    }
-    // 2. Carte étrangère → ignorer, mais ne pas arrêter
-    // (aucune action)
-  }
-  // --- Lecture courant ---
-  float amps = readSCT();
-  // --- Mise à jour runtime + coût ---
-  updateRuntime();
-  // --- Affichage dynamique ---
-  if (millis() - lastLCDUpdate >= LCD_UPDATE_INTERVAL) {
-    lcdClearLine(1);
-    lcdClearLine(2);
-    if (gToggleDisplay) {
-      lcd.setCursor(0, 1);
-      lcd.print("PASSEZ VOTRE CARTE");
-      lcd.setCursor(0, 2);
-      lcd.print("POUR ARRETER CHARGE");
-    } else {
-      lcd.setCursor(0, 1);
-      lcd.print("OU CONTACTEZ");
-      lcd.setCursor(0, 2);
-      lcd.print("LE " + gTelephone);
-    }
-    lcd.setCursor(0, 3);
-    lcd.print("Cout:$");
-    lcd.print(strRunCost);
-    lcd.print("  ");
-    if (gRunTime < 60) {
-      lcd.print(strRuntime);
-      lcd.print(" min.");
-    } else {
-      lcd.print(strRuntimeHr);
-      lcd.print(" hr.");
-    }
-    lastLCDUpdate = millis();
-    gToggleDisplay = !gToggleDisplay;
-  }
-}
-void fctEtape7() { // Fin de Charge détectée
-  if (entry_FinCharge) { // OneShot
-    digitalWrite(PIN_LED, LOW);   // <<< LED OFF à la fin
-    DBGLN("Fin de Charge");
-    lcdFinCharge();
-    ssrOff();
-    updateRuntime();
-    lastRFID = "";
-    gUID = "";
-    LogEvent("STOP", "Fin de charge " + gQuitMode);
-    clearUIDFromEEPROM();
-    resetActivityTimer();
-    entry_FinCharge = false;
-  }
-  if (isInactive(2000)) {
-    state = ATTENTE_CARTE;
-    entry_AttenteCarte = true;
-  }
-}
-void fctEtape8() { // Mode Administration
-  if (entry_ModeAdmin) { // OneShot
-    DBGLN("Mode Admin");
-    LogEvent("ADMIN", "Entrée en mode administrateur");
-    lcdAdmin();
-    entry_ModeAdmin = false;
-  }
-  // Commandes admin
-  handleSerialCommands();
-  resetActivityTimer();
-  
 }
