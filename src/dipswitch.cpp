@@ -1,4 +1,5 @@
 #include "hardware.h"
+#include "config.h"
 
 void initDIPSwitches() {
   // Initialise les pins des DIP Switches en INPUT_PULLUP
@@ -6,6 +7,7 @@ void initDIPSwitches() {
   pinMode(DIP2, INPUT_PULLUP);
   pinMode(DIP3, INPUT_PULLUP);
   pinMode(DIP4, INPUT_PULLUP);
+  DBGLN("DIP Switches initialisés en INPUT_PULLUP");
 }
 int readDIPSwitches() {
   // Lit l'état des 4 DIP Switches et retourne une valeur de 0 à 15

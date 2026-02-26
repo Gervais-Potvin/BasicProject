@@ -2,7 +2,7 @@
 #include <LiquidCrystal_I2C.h>
 
 void lcdAccueil();
-void InitLCD();
+void initLCD();
 void lcdValidationCarte();
 void lcdCarteValide();
 void lcdCarteInvalide();

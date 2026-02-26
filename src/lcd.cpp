@@ -166,7 +166,7 @@ void lcdIdleUpdate()
     return;
   }
 }
-void InitLCD()
+void initLCD()
 {
   lcdIdle = false;
   lcdIdle = false;

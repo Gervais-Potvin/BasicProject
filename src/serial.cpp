@@ -84,10 +84,7 @@ void handleSerialCommands()
 }
 void initSerial()
 {
-  Serial.begin(9600);
-  while (!Serial)
-  {
-  }
-  Serial.println("=== BORNE AMICALE — Initialisation du Serial Monitor ===");
-  Serial.println("Serial Monitor prêt.");
+  Serial.begin(115200);
+  delay(200); // Attente de la connexion du port série
+  DBGLN("Serial initialisé à 115200 bauds");
 }
