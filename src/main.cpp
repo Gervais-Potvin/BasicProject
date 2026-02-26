@@ -940,107 +940,19 @@ void updateLCDRestMode() {
 // SETUP
 // =========================
 void setup() {
-  #include "state_machine.h"
-  Serial.begin(115200);
-
-  // --- Initialisation des timers LCD ---
-  lcdRestMode = false;
-  lastLCDRestActivity = millis();
-  lastLCDRestRefresh = millis();
-
-  resetActivityTimer();
-
-  // --- Initialisation des I/O ---
-  pinMode(SD_CS, OUTPUT);
-  pinMode(RFID_SS, OUTPUT);
-  pinMode(53, OUTPUT); // SS matériel du Mega
-  pinMode(PIN_BUZZER, OUTPUT);
-  pinMode(PIN_LED, OUTPUT);
-  pinMode(PIN_SSR_A, OUTPUT);
-  pinMode(PIN_SSR_B, OUTPUT);
-  pinMode(PIN_AC_DETECT, INPUT);
-  pinMode(DIP1, INPUT_PULLUP);
-  pinMode(DIP2, INPUT_PULLUP);
-  pinMode(DIP3, INPUT_PULLUP);
-  pinMode(DIP4, INPUT_PULLUP);
-
-  spiDeselectAll();    // Sécurise le bus SPI
-
-  Wire.begin();
-  SPI.begin();
-
-  // Initialisation du RTC
-  rtc.begin();
-  rtcBatteryOK();
-
-  // Initialisation du LCD
-  lcd.init(); 
-  lcd.backlight();
-  // --- INITIALISATION RFID ---
-  selectRFID();
-  rfid.PCD_Init();
-  spiDeselectAll();
-  // --- INITIALISATION SD ---
-  selectSD();
-  SD.begin(SD_CS);
-  spiDeselectAll();
-
-  Serial.println("=== BORNE AMICALE — Fonctions Sérielles réservé Administration ===");
-  Serial.println(" admin    → Passer en mode Administrateur");
-  Serial.println("----------------------------------------");
-
-  getTimestamp(); // Initialisation
-  LogEvent("BOOT", "Redémarrage du système");
-
-  // --- Lecture EEPROM pour reprise apres perte de tension ou reset ---
-  String resumeUID = readUIDFromEEPROM();
-  DBG("ResumeUID: ");
-  DBGLN(resumeUID);
-  if (isValidUID(resumeUID)) {
-    gUID = resumeUID;
-    // Activer SSR pour permettre la détection de courant
-    ssrOn();
-    delay(5000);  // temps pour stabiliser le courant
-    if (checkStartByCurrent()) {
-      // Recharger les infos de la carte depuis la SD
-      if (!findCard(gUID)) {
-        Serial.println("ERREUR: UID valide mais introuvable dans la SD !");
-        // Sécurité : on annule la reprise
-        ssrOff();
-        clearUIDFromEEPROM();
-        state = ATTENTE_CARTE;
-        entry_AttenteCarte = true;
-        return;
-      }
-      state = CHARGE_EN_COURS;
-      entry_ChargeEnCours = true;
-      Serial.println("Reprise directe de la charge depuis EEPROM.");
-    } 
-    else {
-      ssrOff();
-      state = ATTENTE_CONNEXION;
-      entry_AttenteConnexion = true;
-      Serial.println("Reprise UID valide → attente connexion.");
-    }
-  } else {
-    clearUIDFromEEPROM();
-    state = ATTENTE_CARTE;
-    entry_AttenteCarte = true;
-    Serial.println("EEPROM invalide → nettoyage.");
-  }
-  DBG("Mode Admin");
-  DBG("EEPROM UID au boot = [");
-  DBG(resumeUID);
-  DBG("]");
+  // put your setup code here, to run once:
+  Serial.begin(19200);
+  int result = myFunction(2, 3);
+  Serial.print(result);
 }
-// =========================
-// LOOP
-// =========================
+
 void loop() {
-  // Gestion du LCD Rest Mode (indépendant)
-  updateLCDRestMode();
-  // 1. Exécuter les actions de l’étape courante
-  runStateActions();
-  // 2. Gérer les transitions entre étapes
-  handleTransitions();
+  Serial.println("Eai s");
+  // put your main code here, to run repeatedly:
+  delay(1000);
+}
+
+// put function definitions here:
+int myFunction(int x, int y) {
+  return x + y;
 }

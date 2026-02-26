@@ -1,0 +1,19 @@
+{
+  "build": {
+    "core": "MiniCore",
+    "mcu": "atmega328pb",
+    "f_cpu": "16000000L",
+    "variant": "328pb",
+    "extra_flags": "-DARDUINO_AVR_ATmega328PB"
+  },
+  "frameworks": ["arduino"],
+  "name": "ATmega328PB MiniCore UART1",
+  "upload": {
+    "protocol": "arduino",
+    "maximum_size": 32256,
+    "maximum_ram_size": 2048,
+    "speed": 115200
+  },
+  "url": "https://github.com/MCUdude/MiniCore",
+  "vendor": "MiniCore"
+}
