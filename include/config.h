@@ -1,7 +1,15 @@
 #pragma once
 #include <Arduino.h>
 
-// Enum des états
+#ifdef DEBUG
+  #define DBG(x) Serial.print(x)
+  #define DBGLN(x) Serial.println(x)
+#else
+  #define DBG(x)
+  #define DBGLN(x)
+#endif
+
+// États définis dans la Machine
 enum State {
     ATTENTE_CARTE,
     VALIDATION_CARTE,
@@ -27,7 +35,10 @@ extern bool entry_FinCharge;
 extern bool entry_ModeAdmin;
 
 // UID
-extern String gUID;
-extern String lastRFID;
+extern String strRFID; // UID de la carte en cours de validation
+extern String strLastRFID; // Stocke le dernier RFID lu pour éviter les lectures multiples
+extern const unsigned long LCD_UPDATE_INTERVAL; // en ms
 
-// Autres variables globales (on les ajoutera au besoin)
+// Autres variables globales
+
+
